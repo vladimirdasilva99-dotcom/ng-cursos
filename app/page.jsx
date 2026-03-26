@@ -19,7 +19,7 @@ export default function PublicPage() {
       setError("");
       const { data, error: fetchError } = await supabase
         .from("public_students")
-        .select("id, nome, data_fim")
+        .select("id, nome, curso, data_fim")
         .order("data_fim", { ascending: false });
 
       if (!isMounted) return;
@@ -96,6 +96,7 @@ export default function PublicPage() {
             <thead>
               <tr>
                 <th>Nome</th>
+                <th>Curso</th>
                 <th>Data de conclusão</th>
               </tr>
             </thead>
@@ -103,6 +104,7 @@ export default function PublicPage() {
               {filtered.map((student) => (
                 <tr key={student.id}>
                   <td>{student.nome}</td>
+                  <td>{student.curso}</td>
                   <td>{formatDate(student.data_fim)}</td>
                 </tr>
               ))}
@@ -140,9 +142,10 @@ function filteredStudents(students, query, dateFrom, dateTo) {
 }
 
 function exportCsv(rows) {
-  const header = ["Nome", "Data de conclusão"];
+  const header = ["Nome", "Curso", "Data de conclusão"];
   const lines = rows.map((row) => [
     String(row.nome ?? ""),
+    String(row.curso ?? ""),
     formatDate(row.data_fim)
   ]);
   const csv = [header, ...lines]
