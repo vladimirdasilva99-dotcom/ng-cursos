@@ -7,6 +7,7 @@ export default function PublicPage() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -42,13 +43,22 @@ export default function PublicPage() {
       </section>
 
       <section className="card">
-        {loading && <p>Carregando...</p>}
-        {error && <p className="muted">{error}</p>}
-        {!loading && !error && students.length === 0 && (
-          <p>Nenhum aluno cadastrado ainda.</p>
-        )}
-        {!loading && !error && students.length > 0 && (
-          <table className="table">
+      <div className="actions" style={{ marginBottom: 12 }}>
+        <input
+          className="input"
+          type="text"
+          placeholder="Buscar por nome..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
+      {loading && <p>Carregando...</p>}
+      {error && <p className="muted">{error}</p>}
+      {!loading && !error && students.length === 0 && (
+        <p>Nenhum aluno cadastrado ainda.</p>
+      )}
+      {!loading && !error && students.length > 0 && (
+        <table className="table">
             <thead>
               <tr>
                 <th>Nome</th>
@@ -56,7 +66,7 @@ export default function PublicPage() {
               </tr>
             </thead>
             <tbody>
-              {students.map((student) => (
+              {filteredStudents(students, query).map((student) => (
                 <tr key={student.id}>
                   <td>{student.nome}</td>
                   <td>{formatDate(student.data_fim)}</td>
@@ -64,9 +74,9 @@ export default function PublicPage() {
               ))}
             </tbody>
           </table>
-        )}
-      </section>
-    </main>
+      )}
+    </section>
+  </main>
   );
 }
 
@@ -75,4 +85,12 @@ function formatDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("pt-BR");
+}
+
+function filteredStudents(students, query) {
+  const term = query.trim().toLowerCase();
+  if (!term) return students;
+  return students.filter((student) =>
+    String(student.nome ?? "").toLowerCase().includes(term)
+  );
 }
