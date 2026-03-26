@@ -178,15 +178,16 @@ export default function AdminPage() {
   return (
     <main className="container">
       <section className="card">
-        <div className="actions" style={{ justifyContent: "space-between" }}>
-          <div>
-            <h2 className="section-title">Painel Administrativo</h2>
-            <p className="muted">Cadastre alunos e gere o QR Code público.</p>
+          <div className="actions" style={{ justifyContent: "space-between" }}>
+            <div>
+              <h2 className="section-title">Painel Administrativo</h2>
+              <p className="muted">Acesso Administrativo</p>
+              <p className="muted">Cadastre alunos e gere o QR Code público.</p>
+            </div>
+            <button className="button ghost" onClick={signOut}>
+              Sair
+            </button>
           </div>
-          <button className="button ghost" onClick={signOut}>
-            Sair
-          </button>
-        </div>
       </section>
 
       <section className="card">
