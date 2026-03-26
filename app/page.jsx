@@ -1,172 +1,169 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-export default function PublicPage() {
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+const categories = [
+  { id: "pdv", label: "PDV (Caixas)", desc: "Atividades dos caixas e frente de loja." },
+  { id: "impressoras", label: "Impressoras", desc: "Manutencao e ajustes de impressoes." },
+  { id: "computadores", label: "Computadores da Gerencia", desc: "Equipamentos dos gerentes e setores." },
+  { id: "chamados", label: "Chamados", desc: "Pendencias gerais e suporte." }
+];
+
+const statusOptions = [
+  { id: "pendente", label: "Pendente" },
+  { id: "em_trabalho", label: "Em trabalho" },
+  { id: "concluido", label: "Concluido" }
+];
+
+export default function PublicTasks() {
+  const [tasks, setTasks] = useState([]);
+  const [activeCategory, setActiveCategory] = useState("pdv");
+  const [statusFilter, setStatusFilter] = useState("todos");
   const [query, setQuery] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const filtered = filteredStudents(students, query, dateFrom, dateTo);
+  const [message, setMessage] = useState("");
+
+  const categoryMeta = useMemo(
+    () => categories.find((item) => item.id === activeCategory),
+    [activeCategory]
+  );
 
   useEffect(() => {
-    let isMounted = true;
-    async function load() {
-      setLoading(true);
-      setError("");
-      const { data, error: fetchError } = await supabase
-        .from("public_students")
-        .select("id, nome, curso, data_fim")
-        .order("data_fim", { ascending: false });
+    loadTasks();
+  }, [activeCategory]);
 
-      if (!isMounted) return;
-      if (fetchError) {
-        setError("Não foi possível carregar a lista pública.");
-      } else {
-        setStudents(data ?? []);
-      }
-      setLoading(false);
+  async function loadTasks() {
+    setMessage("");
+    const { data, error } = await supabase
+      .from("tasks")
+      .select("id, titulo, descricao, comentario, status, categoria, fotos, created_at")
+      .eq("categoria", activeCategory)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setMessage("Nao foi possivel carregar as tarefas publicas.");
+      return;
     }
-    load();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    setTasks(data ?? []);
+  }
+
+  const filteredTasks = tasks.filter((task) => {
+    if (statusFilter !== "todos" && task.status !== statusFilter) return false;
+    if (query.trim()) {
+      const term = query.trim().toLowerCase();
+      return (
+        String(task.titulo ?? "").toLowerCase().includes(term) ||
+        String(task.descricao ?? "").toLowerCase().includes(term) ||
+        String(task.comentario ?? "").toLowerCase().includes(term)
+      );
+    }
+    return true;
+  });
 
   return (
-    <main className="container">
-      <section className="card">
-        <h2 className="section-title">Lista Pública de Conclusão</h2>
-        <p className="muted">
-          Aqui aparece apenas o nome do aluno e a data de conclusão do curso.
-        </p>
-      </section>
+    <main className="public-page">
+      <header className="public-hero">
+        <div>
+          <span className="public-badge">Consulta publica</span>
+          <h1>Painel de Tarefas</h1>
+          <p className="muted">Visualize as atividades registradas da loja.</p>
+        </div>
+        <a className="button ghost" href="/admin">Acessar area interna</a>
+      </header>
 
-      <section className="card">
-      <div className="actions" style={{ marginBottom: 12 }}>
-        <input
-          className="input"
-          type="text"
-          placeholder="Buscar por nome..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <input
-          className="input"
-          type="date"
-          value={dateFrom}
-          onChange={(e) => setDateFrom(e.target.value)}
-        />
-        <input
-          className="input"
-          type="date"
-          value={dateTo}
-          onChange={(e) => setDateTo(e.target.value)}
-        />
-        <button
-          className="button"
-          type="button"
-          onClick={() => exportCsv(filtered)}
-          disabled={filtered.length === 0}
-        >
-          Exportar CSV
-        </button>
-        <button
-          className="button ghost"
-          type="button"
-          onClick={() => {
-            setQuery("");
-            setDateFrom("");
-            setDateTo("");
-          }}
-        >
-          Limpar filtros
-        </button>
-      </div>
-      {loading && <p>Carregando...</p>}
-      {error && <p className="muted">{error}</p>}
-      {!loading && !error && students.length === 0 && (
-        <p>Nenhum aluno cadastrado ainda.</p>
-      )}
-      {!loading && !error && students.length > 0 && (
-        <table className="table">
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Curso</th>
-                <th>Data de conclusão</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((student) => (
-                <tr key={student.id}>
-                  <td>{student.nome}</td>
-                  <td>{student.curso}</td>
-                  <td>{formatDate(student.data_fim)}</td>
-                </tr>
+      <section className="public-grid">
+        <aside className="public-sidebar">
+          <h3>Categorias</h3>
+          <div className="menu">
+            {categories.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={item.id === activeCategory ? "menu-item active" : "menu-item"}
+                onClick={() => setActiveCategory(item.id)}
+              >
+                <span>{item.label}</span>
+                <small>{item.desc}</small>
+              </button>
+            ))}
+          </div>
+        </aside>
+
+        <section className="public-content">
+          <div className="content-header">
+            <div>
+              <h2>{categoryMeta?.label}</h2>
+              <p className="muted">{categoryMeta?.desc}</p>
+            </div>
+            <div className="filters">
+              <input
+                className="input"
+                placeholder="Buscar tarefa..."
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+              <select
+                className="select"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+              >
+                <option value="todos">Todos os status</option>
+                {statusOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <section className="card">
+            <div className="list-header">
+              <h3>Tarefas registradas</h3>
+              <span className="muted">{filteredTasks.length} item(ns)</span>
+            </div>
+            {message && <p className="muted">{message}</p>}
+            {filteredTasks.length === 0 && !message && (
+              <p className="muted">Nenhuma tarefa encontrada para esta categoria.</p>
+            )}
+            <div className="task-list">
+              {filteredTasks.map((task) => (
+                <article key={task.id} className="task-card">
+                  <div className="task-head">
+                    <div>
+                      <h4>{task.titulo}</h4>
+                      <p className="muted">Criado em {formatDate(task.created_at)}</p>
+                    </div>
+                    <span className={`status ${task.status}`}>
+                      {statusOptions.find((opt) => opt.id === task.status)?.label ?? "Status"}
+                    </span>
+                  </div>
+                  {task.descricao && <p>{task.descricao}</p>}
+                  {task.comentario && (
+                    <p className="comment">
+                      <strong>Comentario:</strong> {task.comentario}
+                    </p>
+                  )}
+                  {Array.isArray(task.fotos) && task.fotos.length > 0 && (
+                    <div className="photo-grid">
+                      {task.fotos.map((url, index) => (
+                        <img key={`${task.id}-foto-${index}`} src={url} alt="Foto da tarefa" />
+                      ))}
+                    </div>
+                  )}
+                </article>
               ))}
-            </tbody>
-          </table>
-      )}
-    </section>
-  </main>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
   );
 }
 
 function formatDate(value) {
   if (!value) return "-";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("pt-BR");
-}
-
-function filteredStudents(students, query, dateFrom, dateTo) {
-  const term = query.trim().toLowerCase();
-  const from = dateFrom ? new Date(dateFrom) : null;
-  const to = dateTo ? new Date(dateTo) : null;
-
-  return students.filter((student) => {
-    const nameOk = term
-      ? String(student.nome ?? "").toLowerCase().includes(term)
-      : true;
-    if (!from && !to) return nameOk;
-    const endDate = student.data_fim ? new Date(student.data_fim) : null;
-    if (!endDate || Number.isNaN(endDate.getTime())) return false;
-    const fromOk = from ? endDate >= from : true;
-    const toOk = to ? endDate <= to : true;
-    return nameOk && fromOk && toOk;
-  });
-}
-
-function exportCsv(rows) {
-  const header = ["Nome", "Curso", "Data de conclusão"];
-  const lines = rows.map((row) => [
-    String(row.nome ?? ""),
-    String(row.curso ?? ""),
-    formatDate(row.data_fim)
-  ]);
-  const csv = [header, ...lines]
-    .map((cols) => cols.map(escapeCsv).join(","))
-    .join("\n");
-
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "lista-alunos.csv";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-}
-
-function escapeCsv(value) {
-  const text = String(value ?? "");
-  if (text.includes(",") || text.includes("\"") || text.includes("\n")) {
-    return `"${text.replace(/"/g, "\"\"")}"`;
-  }
-  return text;
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }

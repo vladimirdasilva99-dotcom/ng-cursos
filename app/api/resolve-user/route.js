@@ -1,5 +1,4 @@
-import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+﻿import { NextResponse } from "next/server";
 
 export async function POST(request) {
   const body = await request.json().catch(() => ({}));
@@ -9,19 +8,16 @@ export async function POST(request) {
     return NextResponse.json({ error: "username required" }, { status: 400 });
   }
 
-  const { data, error } = await supabaseAdmin
-    .from("profiles")
-    .select("email")
-    .eq("username", username)
-    .maybeSingle();
+  const allowedUser = String(process.env.APP_LOGIN_USER ?? "").trim().toLowerCase();
+  const email = String(process.env.APP_LOGIN_EMAIL ?? "").trim();
 
-  if (error) {
-    return NextResponse.json({ error: "lookup failed" }, { status: 500 });
+  if (!allowedUser || !email) {
+    return NextResponse.json({ error: "login not configured" }, { status: 500 });
   }
 
-  if (!data?.email) {
+  if (username !== allowedUser) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ email: data.email });
+  return NextResponse.json({ email });
 }
